@@ -1,55 +1,97 @@
-# Portfolio · Data Engineer
+# Puls-Events RAG Chatbot
 
-Formation Data Engineer — spécialisation NLP & bases de données vectorielles.  
-Ce portfolio regroupe les projets réalisés en alternance chez **Puls-Events**, une plateforme de découverte d'événements culturels en temps réel.
+![Tests](https://github.com/dorrazch-hue/puls-events-rag/actions/workflows/tests.yml/badge.svg)
 
----
+Chatbot intelligent de recommandation d'événements culturels pour le Grand Paris, basé sur une architecture RAG (Retrieval-Augmented Generation).
 
-## 🗂️ Projets
+## Technologies
 
-### Chatbot RAG — Puls-Events MVP
-> Transformation d'un POC en MVP production-ready
+- **LangChain** — orchestration du pipeline RAG (RunnableLambda, PromptTemplate)
+- **Mistral AI** — `mistral-embed` (vecteurs 1024 dimensions) + `mistral-small-latest` (génération)
+- **FAISS** — base vectorielle IndexFlatL2 avec seuil de pertinence (distance < 500)
+- **Open Agenda API** — agenda `que-faire-a-paris`, jusqu'à **300 événements** avec pagination
+- **Python 3.11** — python-dotenv, requests, pickle, unittest
 
-**Contexte** : Puls-Events souhaitait passer d'un moteur de recherche sémantique validé en POC à un chatbot intelligent déployable en production. J'ai pris en charge la conception de l'architecture et la rédaction de l'étude de design du MVP.
+## Prérequis
 
-**Ce que j'ai fait :**
-- Analyse des besoins techniques (mémoire conversationnelle, géolocalisation, recherche web temps réel, monitoring)
-- Choix et justification de la stack cloud (GCP · Vertex AI · Cloud Run)
-- Conception de l'architecture RAG complète (LangChain · ChromaDB · Gemini Pro)
-- Rédaction du macro backlog (méthode MoSCoW) et du plan de projet sur 12 semaines
-- Estimation des coûts build (~3 200 €) et OPEX (~108 €/mois)
+- Python 3.11+ → https://www.python.org/downloads/
+- Clé API Mistral → https://console.mistral.ai/
+- Clé API Open Agenda → https://openagenda.com/developers
 
-**Stack technique :**
+## Installation
 
-![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
-![GCP](https://img.shields.io/badge/GCP-Vertex_AI-4285F4?logo=googlecloud&logoColor=white)
-![LangChain](https://img.shields.io/badge/LangChain-0.1-green)
-![ChromaDB](https://img.shields.io/badge/ChromaDB-vectorDB-orange)
-![HuggingFace](https://img.shields.io/badge/HuggingFace-smolagents-yellow?logo=huggingface)
-![Langfuse](https://img.shields.io/badge/Monitoring-Langfuse-purple)
+```bash
+git clone https://github.com/dorrazch-hue/puls-events-rag.git
+cd puls-events-rag
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# Remplir MISTRAL_API_KEY et OPENAGENDA_API_KEY dans .env
+```
 
-**Compétences démontrées :**
-- Architecture de systèmes RAG (Retrieval-Augmented Generation)
-- Gestion de projet (méthode hybride Agile / Cycle en V)
-- Veille technologique cloud et NLP
-- Estimation de coûts et planification
+## Utilisation
 
----
+```bash
+# 1. Collecter les événements (jusqu'à 300 via pagination)
+python3 scripts/fetch_events.py
 
-## 🛠️ Compétences techniques
+# 2. Prétraitement (filtre temporel + géographique Grand Paris)
+python3 scripts/preprocess.py
 
-| Domaine | Outils & technologies |
-|---|---|
-| Langage | Python |
-| NLP / IA | LangChain, Vertex AI, Hugging Face, smolagents |
-| Bases vectorielles | ChromaDB, Vertex AI Vector Search |
-| Cloud | GCP (Cloud Run, Firestore, Vertex AI) |
-| Monitoring | Langfuse |
-| Gestion de projet | Agile, MoSCoW, backlog, planning |
+# 3. Vectorisation par lots de 10 (avec retry 429)
+python3 scripts/vectorize.py
 
----
+# 4. Lancer le chatbot
+python3 scripts/chatbot.py
+```
 
-## 📬 Contact
+## Tests
 
-**Dorra** · Data Engineer en alternance  
-[GitHub](https://github.com/dorrazch-hue) · Formation Data Engineer
+```bash
+python3 -m unittest tests_unitaires.py -v
+```
+
+**12/12 tests passés** — utilise des fixtures indépendantes (`tests/fixtures_events.json`) et un index FAISS synthétique créé automatiquement. Aucune clé API requise.
+
+Pour rejouer l'évaluation RAG sur les 5 questions annotées :
+
+```bash
+python3 scripts/evaluate.py
+```
+
+## Structure du projet
+
+```
+puls-events-rag/
+├── scripts/
+│   ├── fetch_events.py     # Collecte Open Agenda (300 événements, pagination)
+│   ├── preprocess.py       # Nettoyage, filtre temporel et géographique
+│   ├── vectorize.py        # Vectorisation par lots (BATCH_SIZE=10)
+│   ├── chatbot.py          # Pipeline RAG LangChain avec mesure des temps
+│   └── evaluate.py         # Replay des 5 questions d'évaluation (sauvegarde docs/evaluation_results.json)
+├── tests/
+│   └── fixtures_events.json
+├── tests_unitaires.py      # 12 tests unitaires
+├── docs/
+│   ├── rapport_technique_puls_events.docx
+│   ├── presentation_puls_events.pptx
+│   ├── evaluation_rag.md          # Score : 73% de pertinence
+│   └── evaluation_data.json       # Données reproductibles (5 questions, scores, justification seuil FAISS)
+├── .github/
+│   └── workflows/
+│       └── tests.yml              # CI GitHub Actions
+├── .env.example
+├── requirements.txt
+└── README.md
+```
+
+## Périmètre géographique
+
+Grand Paris : Paris, Saint-Ouen, Boulogne, Vincennes, Montreuil, Saint-Denis, Nanterre, Neuilly — événements des **12 derniers mois**.
+
+## Évaluation RAG
+
+Score mesuré sur 5 questions annotées : **73% de pertinence (2.2/3)**
+
+Données complètes dans `docs/evaluation_data.json` (questions, réponses, distances FAISS, justification du seuil 500).
