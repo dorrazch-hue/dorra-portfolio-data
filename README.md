@@ -1,97 +1,113 @@
-# Puls-Events RAG Chatbot
+# Dorra — Data Engineer
 
-![Tests](https://github.com/dorrazch-hue/puls-events-rag/actions/workflows/tests.yml/badge.svg)
+Formation Data Engineer · Spécialisation NLP et bases de données vectorielles
 
-Chatbot intelligent de recommandation d'événements culturels pour le Grand Paris, basé sur une architecture RAG (Retrieval-Augmented Generation).
+Je construis des pipelines de données et des systèmes IA de bout en bout — de l'ingestion au déploiement en production. Voici les projets réalisés pendant ma formation, sur des sujets variés : NLP, streaming temps réel, MLOps, ELT cloud et sécurité des données.
 
-## Technologies
+---
 
-- **LangChain** — orchestration du pipeline RAG (RunnableLambda, PromptTemplate)
-- **Mistral AI** — `mistral-embed` (vecteurs 1024 dimensions) + `mistral-small-latest` (génération)
-- **FAISS** — base vectorielle IndexFlatL2 avec seuil de pertinence (distance < 500)
-- **Open Agenda API** — agenda `que-faire-a-paris`, jusqu'à **300 événements** avec pagination
-- **Python 3.11** — python-dotenv, requests, pickle, unittest
+## Projets
 
-## Prérequis
+---
 
-- Python 3.11+ → https://www.python.org/downloads/
-- Clé API Mistral → https://console.mistral.ai/
-- Clé API Open Agenda → https://openagenda.com/developers
+### Du POC au MVP — Chatbot RAG Puls-Events
+`GCP` `Vertex AI` `LangChain` `ChromaDB` `Gemini 1.5 Pro` `Langfuse` · *Août 2026*
 
-## Installation
+Puls-Events avait un POC fonctionnel mais pas d'architecture pour le passer en production. J'ai conçu l'étude de design complète du MVP : analyse des besoins, choix de la stack cloud, architecture technique, backlog priorisé, registre des risques, conformité RGPD et estimation des coûts.
 
-```bash
-git clone https://github.com/dorrazch-hue/puls-events-rag.git
-cd puls-events-rag
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-# Remplir MISTRAL_API_KEY et OPENAGENDA_API_KEY dans .env
-```
+Le vrai sujet de ce projet n'était pas technique — c'était de prendre des décisions d'architecture justifiées avec des contraintes réelles (budget, charge incertaine, RGPD) et de les structurer dans un plan de projet tenable sur 12 semaines.
 
-## Utilisation
+**Points clés :**
+- Architecture RAG avec persistance vectorielle réfléchie : ChromaDB client-serveur + GCS en MVP, migration Vertex AI Vector Search planifiée en production
+- Stratégie de scalabilité documentée (instances Cloud Run, cache LRU, fallback modèle)
+- OPEX estimé à ~210 €/mois pour 1 000 utilisateurs, avec plan d'optimisation budgétaire (cache, batching, fallback Gemini 1.5 Flash)
+- RGPD : consentement opt-in, historique 30 jours max, Secret Manager pour les clés API
 
-```bash
-# 1. Collecter les événements (jusqu'à 300 via pagination)
-python3 scripts/fetch_events.py
+→ [Rapport de gestion de projet complet dans ce repo](./rapport_gestion_projet_puls_events.pdf)
 
-# 2. Prétraitement (filtre temporel + géographique Grand Paris)
-python3 scripts/preprocess.py
+---
 
-# 3. Vectorisation par lots de 10 (avec retry 429)
-python3 scripts/vectorize.py
+### Chatbot RAG — POC événements culturels Paris
+`LangChain` `Mistral AI` `FAISS` `Python` `GitHub Actions` · *2026*
 
-# 4. Lancer le chatbot
-python3 scripts/chatbot.py
-```
+Point de départ de l'aventure Puls-Events. J'ai construit le premier prototype du chatbot de recommandation d'événements culturels sur les données Open Agenda (Grand Paris).
 
-## Tests
+Pipeline complet : collecte de 300 événements via l'API avec pagination, prétraitement et filtrage géographique, indexation FAISS avec embeddings Mistral (1 024 dimensions), génération de réponses via LangChain. Tests unitaires et CI/CD GitHub Actions en place dès le départ.
 
-```bash
-python3 -m unittest tests_unitaires.py -v
-```
+Résultat : le POC a convaincu les équipes produit et marketing — c'est lui qui a lancé la phase MVP.
 
-**12/12 tests passés** — utilise des fixtures indépendantes (`tests/fixtures_events.json`) et un index FAISS synthétique créé automatiquement. Aucune clé API requise.
+→ [github.com/dorrazch-hue/puls-events-rag](https://github.com/dorrazch-hue/puls-events-rag)
 
-Pour rejouer l'évaluation RAG sur les 5 questions annotées :
+---
 
-```bash
-python3 scripts/evaluate.py
-```
+### BottleNeck — Pipeline de données automatisé
+`Kestra` `PostgreSQL` `Python` `Docker` · *2026*
 
-## Structure du projet
+BottleNeck, marchand de vin, avait ses données dispersées entre un ERP et un site web, sans aucun process de consolidation. J'ai automatisé toute la chaîne avec Kestra : nettoyage SQL des trois sources, jointure, calcul du chiffre d'affaires par produit, puis détection des vins premium par score Z.
 
-```
-puls-events-rag/
-├── scripts/
-│   ├── fetch_events.py     # Collecte Open Agenda (300 événements, pagination)
-│   ├── preprocess.py       # Nettoyage, filtre temporel et géographique
-│   ├── vectorize.py        # Vectorisation par lots (BATCH_SIZE=10)
-│   ├── chatbot.py          # Pipeline RAG LangChain avec mesure des temps
-│   └── evaluate.py         # Replay des 5 questions d'évaluation (sauvegarde docs/evaluation_results.json)
-├── tests/
-│   └── fixtures_events.json
-├── tests_unitaires.py      # 12 tests unitaires
-├── docs/
-│   ├── rapport_technique_puls_events.docx
-│   ├── presentation_puls_events.pptx
-│   ├── evaluation_rag.md          # Score : 73% de pertinence
-│   └── evaluation_data.json       # Données reproductibles (5 questions, scores, justification seuil FAISS)
-├── .github/
-│   └── workflows/
-│       └── tests.yml              # CI GitHub Actions
-├── .env.example
-├── requirements.txt
-└── README.md
-```
+Le pipeline tourne en Docker Compose (Kestra + PostgreSQL) et livre chaque semaine un rapport Excel et deux fichiers CSV prêts à l'emploi. Zéro intervention manuelle.
 
-## Périmètre géographique
+→ [github.com/dorrazch-hue/bottleneck-data-pipeline](https://github.com/dorrazch-hue/bottleneck-data-pipeline)
 
-Grand Paris : Paris, Saint-Ouen, Boulogne, Vincennes, Montreuil, Saint-Denis, Nanterre, Neuilly — événements des **12 derniers mois**.
+---
 
-## Évaluation RAG
+### InduTech — Streaming temps réel de tickets clients
+`Redpanda` `PySpark Structured Streaming` `Docker` `Python` · *Juillet 2026*
 
-Score mesuré sur 5 questions annotées : **73% de pertinence (2.2/3)**
+Pipeline de traitement de tickets clients en temps réel pour InduTech, entièrement conteneurisé. Le producteur Python génère un ticket par seconde sur un topic Redpanda (3 partitions, API Kafka). PySpark Structured Streaming consomme, enrichit chaque ticket (équipe support assignée, flag urgent) et sort les agrégations en temps réel en Parquet et JSON.
 
-Données complètes dans `docs/evaluation_data.json` (questions, réponses, distances FAISS, justification du seuil 500).
+Projet réalisé et démontré en vidéo — de `docker compose up` jusqu'aux tableaux d'analyse en direct.
+
+→ [github.com/dorrazch-hue/projet9-tickets-redpanda-pyspark](https://github.com/dorrazch-hue/projet9-tickets-redpanda-pyspark)
+
+---
+
+### GreenCoop — Pipeline ELT météo multi-stations
+`Meltano` `AWS RDS` `PostgreSQL` `Python` · *Juillet 2026*
+
+GreenCoop (Hauts-de-France) avait besoin de données de 6 stations météo semi-pro pour alimenter ses modèles de prévision de la demande électrique. Les données venaient de deux sources hétérogènes : l'API InfoClimat et des fichiers Excel Weather Underground.
+
+J'ai construit un pipeline Meltano pour InfoClimat (période configurable via `.env`, sans dates en dur) et un script de chargement pour les fichiers Excel. Résultat : 9 463 observations nettoyées et dédupliquées, 14/14 tests de qualité passés, données déployées sur AWS RDS PostgreSQL (eu-west-3).
+
+→ [github.com/dorrazch-hue/forecast2-greencoop](https://github.com/dorrazch-hue/forecast2-greencoop)
+
+---
+
+### Seattle Energy — API de prédiction déployée sur Cloud Run
+`BentoML` `Google Cloud Run` `Python` `Jupyter` · *Juin 2026*
+
+Modèle de prédiction de la consommation énergétique des bâtiments non-résidentiels de Seattle, packagé avec BentoML et déployé en production sur Google Cloud Run. L'API expose un endpoint POST `/predict` avec documentation Swagger auto-générée.
+
+C'est l'un de mes premiers projets de ML en production — l'API est toujours accessible en ligne.
+
+→ [github.com/dorrazch-hue/seattle-energy-api](https://github.com/dorrazch-hue/seattle-energy-api)
+
+---
+
+### DataSoluTech — Migration sécurisée de 55 500 dossiers médicaux
+`MongoDB` `Docker` `Python` · *Mai 2026*
+
+Migration de 55 500 dossiers médicaux vers une infrastructure MongoDB conteneurisée, avec sécurité pensée dès le départ : RBAC (4 rôles : root, admin, migrator, auditor), aucun secret en dur, traitement par chunks de 5 000 lignes pour ne pas exploser la RAM, réseau Docker isolé.
+
+Un script `proof_security.py` démontre automatiquement que chaque rôle respecte bien ses permissions — les auditeurs ne peuvent pas écrire, les accès sans auth sont refusés.
+
+→ [github.com/dorrazch-hue/projet-med-data](https://github.com/dorrazch-hue/projet-med-data)
+
+---
+
+## Stack
+
+| | Technologies |
+|---|---|
+| **Langages** | Python 3.11, SQL |
+| **NLP & IA** | LangChain, Mistral AI, Vertex AI (Gemini 1.5 Pro), Hugging Face smolagents, FAISS, ChromaDB |
+| **Streaming** | Redpanda (API Kafka), PySpark Structured Streaming |
+| **Pipelines** | Meltano, Kestra |
+| **Bases de données** | PostgreSQL, MongoDB, Firestore |
+| **Cloud** | GCP (Vertex AI, Cloud Run, Firestore), AWS (RDS) |
+| **MLOps** | BentoML, Langfuse |
+| **Infra** | Docker, Docker Compose, GitHub Actions |
+
+---
+
+**Dorra** · [github.com/dorrazch-hue](https://github.com/dorrazch-hue)
